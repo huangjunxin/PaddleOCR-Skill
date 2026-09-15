@@ -1,5 +1,7 @@
 # PaddleOCR-VL Remote Skill
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 让 AI Agent 随时调用**自托管的 PaddleOCR-VL 文档识别服务**，把图片、截图、扫描件、PDF 转成文字（支持表格结构与公式）。
 
 An [Agent Skill](https://platform.claude.com/docs/zh-CN/agents-and-tools/agent-skills/overview) that connects your AI coding agent (Kimi Code, Claude Code, OpenClaw, …) to a **self-hosted PaddleOCR-VL service** via its OpenAI-compatible API — no cloud token, no per-call cost, data never leaves your network.
@@ -35,21 +37,36 @@ scripts/ocr.py ──HTTP POST──▶ mlx_vlm.server :8111/v1/chat/completions
 ```
 paddleocr-vl-remote/
 ├── SKILL.md                  # skill 主体：触发规则、用法、故障排查
+├── config.env.example        # 个人配置模板（复制为 config.env 后填写，不会被 git 跟踪）
 └── scripts/
     ├── ocr.py                # 图片/PDF → 文字（含表格、公式、批量、JSON）
     └── check_server.py       # 服务健康检查
-install.sh                    # 安装到 ~/.agents/skills/
+install.sh                    # 安装到 ~/.agents/skills/（重复安装保留 config.env）
 ```
 
 ## 安装
 
 ```bash
-git clone https://github.com/<you>/PaddleOCR-Skill.git
+git clone https://github.com/huangjunxin/PaddleOCR-Skill.git
 cd PaddleOCR-Skill
 ./install.sh        # 拷贝到 ~/.agents/skills/paddleocr-vl-remote
 ```
 
 装好后**新开一个会话**即可被 agent 自动发现和触发。手动安装也可以直接 `cp -R paddleocr-vl-remote ~/.agents/skills/`。
+
+### 配置服务地址
+
+脚本默认连 `localhost:8111`。服务在别的机器上（如局域网服务器、Tailscale 设备）时，
+把配置模板复制为 `config.env` 并填写：
+
+```bash
+cp ~/.agents/skills/paddleocr-vl-remote/config.env.example ~/.agents/skills/paddleocr-vl-remote/config.env
+# 编辑 config.env，例如:
+#   PADDLEOCR_VL_URL=http://100.x.x.x:8111/v1
+```
+
+优先级：命令行 `--server` > 环境变量 `PADDLEOCR_VL_URL` > `config.env` > 默认 localhost。
+`config.env` 已在 .gitignore 中，个人地址/密钥不会误入仓库。
 
 ### 前置要求
 
@@ -113,7 +130,7 @@ python3 $SKILL/ocr.py scan/*.png --json -o result.json
 
 | 变量 | 作用 | 默认值 |
 |---|---|---|
-| `PADDLEOCR_VL_URL` | 服务地址（**必须以 `/v1` 结尾**） | `http://100.72.227.27:8111/v1` |
+| `PADDLEOCR_VL_URL` | 服务地址（**必须以 `/v1` 结尾**） | `http://localhost:8111/v1` |
 | `PADDLEOCR_VL_MODEL` | 模型 id | `PaddlePaddle/PaddleOCR-VL-1.6` |
 | `PADDLEOCR_VL_API_KEY` | 服务端若加 `--api-key`，此处填密钥 | 空 |
 
@@ -146,6 +163,11 @@ $ python3 $SKILL/ocr.py price.png --prompt "Table Recognition:"
 - [PaddleOCR-VL-1.6 模型](https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.6)
 - [mlx-vlm](https://github.com/Blaizzy/mlx-vlm)
 
+## 贡献
+
+欢迎 Issue 和 PR。修改脚本后请确保 `python3 -m py_compile paddleocr-vl-remote/scripts/*.py` 通过；
+SKILL.md 的 `description` 字段是 agent 判断是否触发的唯一依据，改动时注意保留关键词。
+
 ## License
 
-MIT
+[MIT](LICENSE)

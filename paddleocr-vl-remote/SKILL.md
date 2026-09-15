@@ -1,18 +1,19 @@
 ---
 name: paddleocr-vl-remote
-description: 调用自托管在 mac-mini（Tailscale 100.72.227.27:8111）上的 PaddleOCR-VL 模型服务，把图片、截图、扫描件、PDF 转成文字（支持中文、英文、表格、公式）。当用户要 OCR、提取图片或 PDF 中的文字、截图识字、扫描件转文字、表格识别、公式识别时使用。Trigger: OCR, 文字识别, 图片转文字, 截图识字, 提取图中文字, 扫描件识别, PDF 转文字, 表格识别, 公式识别, image to text, extract text from image, screenshot OCR, table recognition, PaddleOCR。不用于：询问图片内容/含义（用模型自身视觉能力）；需要保留完整版面结构的 Word/Markdown 输出（见"完整文档解析"一节）。
+description: 调用自托管的 PaddleOCR-VL 模型服务（OpenAI 兼容 API，如 mlx_vlm.server / vLLM / SGLang），把图片、截图、扫描件、PDF 转成文字（支持中文、英文、表格、公式）。当用户要 OCR、提取图片或 PDF 中的文字、截图识字、扫描件转文字、表格识别、公式识别时使用。Trigger: OCR, 文字识别, 图片转文字, 截图识字, 提取图中文字, 扫描件识别, PDF 转文字, 表格识别, 公式识别, image to text, extract text from image, screenshot OCR, table recognition, PaddleOCR。不用于：询问图片内容/含义（用模型自身视觉能力）；需要保留完整版面结构的 Word/Markdown 输出（见"完整文档解析"一节）。
 metadata:
-  version: "1.0"
+  version: "1.1"
 ---
 
 # PaddleOCR-VL 远程识别
 
-通过 OpenAI 兼容 API 调用自托管在 mac-mini 上的 PaddleOCR-VL-1.6 文档识别模型
-（Apple Silicon GPU 推理，中英文、表格、公式效果强）。纯 HTTP 调用，无需任何 API token。
+通过 OpenAI 兼容 API 调用自托管的 PaddleOCR-VL 文档识别模型
+（Apple Silicon GPU 推理，中英文、表格、公式效果强）。纯 HTTP 调用，无需任何云端 token。
 
-- 服务地址：`http://100.72.227.27:8111/v1`（Tailscale 内网；默认值可用环境变量 `PADDLEOCR_VL_URL` 覆盖）
+- 服务地址：默认 `http://localhost:8111/v1`，可用 `--server` 参数、环境变量 `PADDLEOCR_VL_URL`
+  或 skill 目录下 `config.env` 覆盖（优先级依次降低）
 - 模型 id：`PaddlePaddle/PaddleOCR-VL-1.6`
-- 当前无鉴权（服务端如加 `--api-key`，用 `--api-key` 参数或 `PADDLEOCR_VL_API_KEY` 传入）
+- 若服务端设置了 `--api-key`，用 `--api-key` 参数、`PADDLEOCR_VL_API_KEY` 环境变量或 config.env 传入
 
 ## 何时使用 / 不使用
 
@@ -28,7 +29,8 @@ metadata:
 python3 ~/.agents/skills/paddleocr-vl-remote/scripts/check_server.py
 ```
 
-服务不可达时告知用户：在 mac-mini 上执行 `cd ~/Projects/paddleocr-vl && ./start_server.sh`，
+服务不可达时告知用户：在服务端机器上执行
+`mlx_vlm.server --model PaddlePaddle/PaddleOCR-VL-1.6 --port 8111 --trust-remote-code`，
 等待 1-2 分钟后重试。（该服务随终端关闭/机器睡眠会中断，这是最常见故障。）
 
 ## 识别图片
@@ -73,7 +75,7 @@ python3 ~/.agents/skills/paddleocr-vl-remote/scripts/ocr.py report.pdf --dpi 300
 ## 完整文档解析（Markdown / DOCX 输出）
 
 当用户要"PDF 转 Markdown/Word"、保留标题层级/阅读顺序/表格结构时，用 PaddleOCR
-官方管线（版面分析在本机 CPU，识别走 mac-mini GPU）。本机一次性安装：
+官方管线（版面分析在本机 CPU，识别走远端 GPU 服务）。本机一次性安装：
 
 ```bash
 pip install paddlepaddle==3.2.1 "paddleocr[doc-parser]" python-docx python-pptx pylatexenc
@@ -84,7 +86,7 @@ pip install paddlepaddle==3.2.1 "paddleocr[doc-parser]" python-docx python-pptx 
 ```bash
 paddleocr doc_parser -i 文档.pdf --device cpu --save_path ./out \
   --vl_rec_backend mlx-vlm-server \
-  --vl_rec_server_url http://100.72.227.27:8111/v1 \
+  --vl_rec_server_url "$PADDLEOCR_VL_URL" \
   --vl_rec_api_model_name PaddlePaddle/PaddleOCR-VL-1.6
 ```
 
@@ -94,7 +96,7 @@ paddleocr doc_parser -i 文档.pdf --device cpu --save_path ./out \
 
 | 现象 | 原因与处理 |
 |---|---|
-| Connection refused | 服务没起：mac-mini 跑 `./start_server.sh` 后用 check_server.py 确认 |
+| Connection refused | 服务没起：服务端重启 `mlx_vlm.server` 后用 check_server.py 确认 |
 | HTTP 404 | 服务地址缺 `/v1` 后缀（脚本已强制检查） |
 | HTTP 401 | 服务端启用了鉴权，加 `--api-key` |
 | 结果为空/乱码 | 图片倒置或严重形变；换一张正向扫描图重试 |
@@ -104,5 +106,5 @@ paddleocr doc_parser -i 文档.pdf --device cpu --save_path ./out \
 ## 技术参考
 
 - 接口标准：OpenAI `/v1/chat/completions`；图像只能传 **base64 data URL 或公网 URL**（服务端访问不到本地路径，脚本已处理）
-- 服务端就是 `mlx_vlm.server`（mlx-vlm ≥0.6.9 自带），部署文档见 mac-mini 项目 `~/Projects/paddleocr-vl/README.md`
+- 服务端就是 `mlx-vlm`（≥0.6.9）自带的 `mlx_vlm.server`；NVIDIA 机器可用 vLLM/SGLang 起同样的 OpenAI 兼容端点
 - 常用提问词：`OCR:`（通用）、`Table Recognition:`、`Formula Recognition:`（与官方 doc_parser 管线一致）

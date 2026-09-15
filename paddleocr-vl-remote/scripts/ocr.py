@@ -25,9 +25,36 @@ import time
 import urllib.error
 import urllib.request
 
-DEFAULT_SERVER = "http://100.72.227.27:8111/v1"
+DEFAULT_SERVER = "http://localhost:8111/v1"
 DEFAULT_MODEL = "PaddlePaddle/PaddleOCR-VL-1.6"
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tif", ".tiff"}
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "config.env")
+
+
+def load_config() -> dict:
+    """读取 skill 目录下的 config.env（KEY=VALUE，# 开头为注释）。文件不存在返回空。"""
+    cfg = {}
+    try:
+        with open(CONFIG_FILE, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    cfg[k.strip()] = v.strip().strip('"').strip("'")
+    except FileNotFoundError:
+        pass
+    return cfg
+
+
+_CONFIG = load_config()
+
+
+def conf(env_name: str, default: str) -> str:
+    """优先级: 命令行 > 环境变量 > config.env > 内置默认值。
+
+     argparse 的 default 在解析前求值，命令行传入后仍会覆盖，故天然满足该顺序。
+    """
+    return os.environ.get(env_name) or _CONFIG.get(env_name) or default
 
 
 def parse_pages(spec: str, total: int) -> list[int]:
@@ -100,10 +127,10 @@ def main() -> None:
                     help="提问词，默认 OCR:；表格用 'Table Recognition:'，公式用 'Formula Recognition:'")
     ap.add_argument("--pages", help="PDF 页码范围，如 1-3,5（默认全部）")
     ap.add_argument("--dpi", type=int, default=200, help="PDF 栅格化 DPI（默认 200）")
-    ap.add_argument("--server", default=os.environ.get("PADDLEOCR_VL_URL", DEFAULT_SERVER),
-                    help=f"服务地址，须以 /v1 结尾（默认 {DEFAULT_SERVER}）")
-    ap.add_argument("--model", default=os.environ.get("PADDLEOCR_VL_MODEL", DEFAULT_MODEL))
-    ap.add_argument("--api-key", default=os.environ.get("PADDLEOCR_VL_API_KEY"))
+    ap.add_argument("--server", default=conf("PADDLEOCR_VL_URL", DEFAULT_SERVER),
+                    help=f"服务地址，须以 /v1 结尾（默认 {DEFAULT_SERVER}，可用环境变量或 config.env 覆盖）")
+    ap.add_argument("--model", default=conf("PADDLEOCR_VL_MODEL", DEFAULT_MODEL))
+    ap.add_argument("--api-key", default=conf("PADDLEOCR_VL_API_KEY", ""))
     ap.add_argument("--timeout", type=int, default=300)
     ap.add_argument("--json", action="store_true", help="以 JSON 输出结构化结果")
     ap.add_argument("-o", "--output", help="把结果写入文件（utf-8）")
@@ -126,7 +153,7 @@ def main() -> None:
                          f"（404 检查地址是否以 /v1 结尾；401 检查 --api-key）")
             except urllib.error.URLError as e:
                 reason = getattr(e, "reason", e)
-                sys.exit(f"连不上模型服务（{reason}）。请在 mac-mini 上重启服务后确认:\n"
+                sys.exit(f"连不上模型服务（{reason}）。请在服务端重启 mlx_vlm.server 后确认:\n"
                          f"  curl {args.server.rstrip('/')[:-2]}/health")
             results.append((path, pno, text, time.time() - t0))
 
