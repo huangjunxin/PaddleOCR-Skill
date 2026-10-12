@@ -1,6 +1,12 @@
 ---
 name: paddleocr-vl-remote
-description: 调用自托管的 PaddleOCR-VL 模型服务（OpenAI 兼容 API，如 mlx_vlm.server / vLLM / SGLang），把图片、截图、扫描件、PDF 转成文字（支持中文、英文、表格、公式）。当用户要 OCR、提取图片或 PDF 中的文字、截图识字、扫描件转文字、表格识别、公式识别时使用。Trigger: OCR, 文字识别, 图片转文字, 截图识字, 提取图中文字, 扫描件识别, PDF 转文字, 表格识别, 公式识别, image to text, extract text from image, screenshot OCR, table recognition, PaddleOCR。不用于：询问图片内容/含义（用模型自身视觉能力）；需要保留完整版面结构的 Word/Markdown 输出（见"完整文档解析"一节）。
+description: >-
+  调用自托管的 PaddleOCR-VL 模型服务（OpenAI 兼容 API，如 mlx_vlm.server / vLLM / SGLang），
+  把图片、截图、扫描件、PDF 转成文字（支持中文、英文、表格、公式）。当用户要 OCR、提取图片或 PDF 中的文字、
+  截图识字、扫描件转文字、表格识别、公式识别时使用。
+  Trigger: OCR, 文字识别, 图片转文字, 截图识字, 提取图中文字, 扫描件识别, PDF 转文字, 表格识别、公式识别,
+  image to text, extract text from image, screenshot OCR, table recognition, PaddleOCR。
+  不用于：询问图片内容/含义（用模型自身视觉能力）；需要保留完整版面结构的 Word/Markdown 输出（见"完整文档解析"一节）。
 metadata:
   version: "1.1"
 ---
